@@ -9,9 +9,11 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-          sh 'echo passed'
-          git clone https://github.com/learn-devops-demo/Jenkins.git $WORKSPACE || echo "Repo already exists"
-          cd $WORKSPACE
+          sh ''' 
+             echo passed
+             git clone https://github.com/learn-devops-demo/Jenkins.git $WORKSPACE || echo "Repo already exists"
+             cd $WORKSPACE
+          '''
       }
     }
     stage('Build and Test') {
