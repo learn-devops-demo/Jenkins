@@ -61,7 +61,6 @@ pipeline {
             GIT_REPO_NAME = "Jenkins"
             GIT_USER_NAME = "learn-devops-demo"
         }
-        agent { label 'master' }  // runs directly on Jenkins host
         steps {
            dir("${WORKSPACE}") {
               withCredentials([string(credentialsId: 'github_cred', variable: 'GITHUB_TOKEN')]) {
