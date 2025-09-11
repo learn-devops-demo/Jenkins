@@ -10,7 +10,7 @@ pipeline {
     stage('Checkout') {
       steps {
           // Jenkins automatically clones your repo into $WORKSPACE
-          checkout scm
+          // checkout scm
           sh 'echo "checkout completed at $WORKSPACE"'
       }
     }
@@ -62,7 +62,7 @@ pipeline {
             GIT_USER_NAME = "learn-devops-demo"
         }
         steps {
-           dir("${WORKSPACE}") {
+           // dir("${WORKSPACE}") {
               withCredentials([string(credentialsId: 'github_cred', variable: 'GITHUB_TOKEN')]) {
                  sh '''
                     git config --global --add safe.directory "*"
@@ -75,7 +75,7 @@ pipeline {
                     git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
                  '''
               }
-           }
+           //}
         }
     }
   }
