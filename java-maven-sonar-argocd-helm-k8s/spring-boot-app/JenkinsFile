@@ -60,10 +60,10 @@ pipeline {
         environment {
             GIT_REPO_NAME = "Jenkins"
             GIT_ORG_NAME = "learn-devops-demo"
-            GIT_USER_NAME = "612-keerthana"
+         // GIT_USER_NAME = "612-keerthana"
         }
         steps {
-           // dir("${WORKSPACE}") {
+      //   dir("${WORKSPACE}") {
               withCredentials([string(credentialsId: 'github_cred', variable: 'GITHUB_TOKEN')]) {
                  sh '''
                     git config --global --add safe.directory "*"
@@ -73,10 +73,10 @@ pipeline {
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                     git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                     git commit -m "Update deployment image to version ${BUILD_NUMBER}" || echo "No changes to commit"
-                    git push https://${GIT_USER_NAME}:${GITHUB_TOKEN}@github.com/${GIT_ORG_NAME}/${GIT_REPO_NAME} HEAD:master
+                    git push https://612-keerthana:${GITHUB_TOKEN}@github.com/${GIT_ORG_NAME}/${GIT_REPO_NAME} HEAD:master
                  '''
               }
-           //}
+       //  }
         }
     }
   }
