@@ -1,0 +1,84 @@
+pipeline {
+  agent {
+    docker {
+      image 'keerthisan/maven_docker_agent:v1' // custom image build
+      args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+      // Binds the host's Docker socket into the container to execute Docker commands on the host daemon
+    }
+  }
+  stages {
+    stage ('Checkout') {
+      steps {
+        git branch: 'master', url: 'https://github.com/learn-devops-demo/Jenkins.git' 
+        sh 'echo passed'
+      }      
+    }
+    stage ('Build and Test') {
+      steps {
+        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app/ && mvn clean package'
+      }
+    }
+    stage ('Static Code Analysis') {
+      steps {
+        // 'SonarQubeServer' must match the name you gave in Jenkins System Configuration
+        withSonarQubeEnv('SonarServer') {
+          echo 'Running SonarQube Analysis...'
+          // Maven automatically picks up the URL and Token injected by the wrapper
+          sh '''
+              cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && \
+              mvn sonar:sonar '''
+          }
+      }
+    }     
+    stage ("Build and Push Docker Image") {
+      environment {
+        DOCKER_IMAGE = "keerthisan/complete-cicd:v${BUILD_NUMBER}"
+      }
+      steps {
+        // This safely grabs the username and password out of the 'docker_cred' vault
+        withCredentials([usernamePassword(credentialsId: 'docker_cred', 
+                                          usernameVariable: 'DOCKER_USER', 
+                                          passwordVariable: 'DOCKER_PASS')]) {
+        // Triple double-quotes (""") allow ${env.DOCKER_IMAGE} to evaluate correctly
+         sh """
+           cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && \
+           docker build -t ${env.DOCKER_IMAGE} . && \
+           echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin && \
+           docker push ${env.DOCKER_IMAGE} && \
+           docker logout
+         """
+        }
+      }
+    }   
+    stage('Update Deployment File') {
+      environment {
+        GIT_REPO_NAME = "Jenkins"
+        GIT_ORG_NAME  = "learn-devops-demo"
+        GIT_USER_NAME = "612-keerthana"
+      }
+      steps {
+        withCredentials([string(credentialsId: 'github_cred', variable: 'GITHUB_TOKEN')]) {
+          sh """
+            # 1. Bypass container workspace ownership issues
+            git config --global --add safe.directory "*"
+                    
+            # 2. Configure Git user identity for the commit history
+            git config user.email "keerthana61200@gmail.com"
+            git config user.name "Keerthana"
+                    
+            # 3. Update the specific image tag version inside the deployment manifest
+            sed -i "s|keerthisan/complete-cicd:v.*|keerthisan/complete-cicd:v${env.BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            
+            # 4. Stage, commit, and securely push the manifest change
+            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            git commit -m "Update deployment image to version ${env.BUILD_NUMBER}" || echo "No changes to commit"
+            
+            # Note the backslash before GITHUB_TOKEN to prevent credential leaking in logs
+            git push https://${env.GIT_USER_NAME}:\$GITHUB_TOKEN@github.com/${env.GIT_ORG_NAME}/${env.GIT_REPO_NAME}.git HEAD:master
+          """
+        }
+      }
+    }
+
+  }
+}
